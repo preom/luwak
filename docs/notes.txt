@@ -1,0 +1,71 @@
+Static web generator
+
+
+Python vs. Javascript
+
+Python
+======
+- scripting language
+- comes installed with linux/macs
+- easier to program in 
+- fewer dependencies
+
+Javascript
+==========
+- related to web
+
+Goal
+====
+
+text -> html/js/css
+
+integration
+generate backend code to act as rest endpoint vs. static files
+recommendation
+automated organization
+file generation
+porting to differnt outlets
+
+Philosophy
+=========
+lazy programmers
+    - should work out of the box but still be hackable
+Simplicity
+    - should be possible to do core tasks in simple work environments
+Stability & Reversability
+Well designed api
+Weakly opinionated
+    -- lots of summarization
+    -- tootlips
+    -- connectivity
+Beautiful
+Modern
+Theme manager
+    - scored on attributes
+
+
+=======================
+
+Features:
+    take markdown doucment and use templates to generate an output file
+
+    script to start a project
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
