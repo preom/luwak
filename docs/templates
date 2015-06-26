@@ -1,0 +1,17 @@
+Templates:
+
+Front end layer of a blog post. 
+
+Features:
+    - Choosing a template for a different post
+    - proper documentation and examples
+    - utitilies for creating and validating themes
+    - dynamic templates that include css and js
+    - theme meta information
+    - theme structure tied to content file
+
+* Guide on how templating system works
+
+* Theme custom configuration
+
+* Content guidelines for themes

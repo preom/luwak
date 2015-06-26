@@ -1,0 +1,4 @@
+{
+    "default": "article.html",
+    "copy": ["bower_components", "css", "js"]
+}
