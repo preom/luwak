@@ -5,6 +5,10 @@ import markdown
 
 from settings import Settings
 
+import sys
+
+from bs4 import BeautifulSoup
+
 class GenerationComponent(object):
     def __init__(self, settings):
         if type(settings) == str:
@@ -69,7 +73,6 @@ class ContentLoader(GenerationComponent):
 
         for src in sources:
             for dirpath, dirname, filenames in os.walk(src, onerror=walkerror):
-                print filenames
                 files.extend([os.path.join(dirpath, filename) for filename in filenames])
 
         files = filter(self.file_filter_func, files) 
@@ -103,7 +106,11 @@ class ContentReader(GenerationComponent):
             sourceContents = f.read()
 
         if fpath.endswith('.md'):
-            html = markdown.markdown(sourceContents)
+            md = markdown.Markdown(extensions=[
+                'markdown.extensions.meta', 
+                'markdown.extensions.fenced_code', 
+                'markdown.extensions.codehilite'])
+            html = md.convert(sourceContents)
         else:
             raise Exception("No reader known for: " + fpath)
 
@@ -112,11 +119,42 @@ class ContentReader(GenerationComponent):
 
         return html
 
+    def generate_meta(self, fpath):
+
+        meta = {}
+
+        if fpath.endswith('.md'):
+            md = markdown.Markdown(extensions=['markdown.extensions.meta'])
+            with open(fpath,'r') as f:
+                md.convert(f.read())
+
+            for k, v in md.Meta.items():
+                meta[k] = v
+
+        return meta
+
+# Returns path to template config file so far, useless
+# TODO change to using local template folder
+def load_template_file(settings=None):
+    templateFilename = 'luwak_template.rc'
+    defaultTemplatesPath = os.path.join(os.path.dirname(__file__), 'templates')
+    defaultTemplates = os.listdir(defaultTemplatesPath)
+
+    if settings and hasattr(self.settings, 'template'):
+        template = self.settings.template 
+    else:
+        template = defaultTemplates[0]
+
+    if template in defaultTemplates:
+        return os.path.join(defaultTemplatesPath, template, templateFilename)
+    else:
+        return ValueError("not implemented yet...")
+
 class TemplateCombinator(GenerationComponent):
     def __init__(self, settings):
         super(TemplateCombinator, self).__init__(settings)
 
-    def combine(self, html, fname=None):
+    def combine(self, html, fname=None, meta=dict()):
         """ 
         Takes html and produces a final html file combined with a template.
         Can use the fname to find meta information to be used in the template 
@@ -124,13 +162,36 @@ class TemplateCombinator(GenerationComponent):
 
         """
 
-        simpleTemplate = \
-        """
-        <html><head></head><body>{0}</body></html>
-        """
+        templateConfigFilePath = load_template_file()
+        templateDirPath = os.path.dirname(templateConfigFilePath)
 
-        endProduct = simpleTemplate.format(html)
+        with open(templateConfigFilePath, 'r') as f:
+            templateConfig = json.loads(f.read())
 
+        # TODO match fname against rules
+
+        with open(os.path.join(templateDirPath, templateConfig['default']), 'r') as f:
+            templateHtml = f.read()
+
+        templateSoup = BeautifulSoup(templateHtml)
+        htmlSoup = BeautifulSoup(html)
+
+        tag = templateSoup.find(class_='luwak-content')
+        tag.insert(1, htmlSoup)
+
+        if 'title' in meta:
+            tag = templateSoup.find(class_='luwak-title')
+            try:
+                tag.string.replace_with(meta['title'][0])
+            except:
+                print "Warning template has no title or other error"
+
+        print templateSoup
+
+        #print templateSoup
+        endProduct = templateSoup.prettify()
+
+        print meta
         return endProduct
 
 
@@ -152,8 +213,6 @@ class ContentWriter(GenerationComponent):
             f.write(html)
 
         os.chdir(oldDir)
-
-
 
 
 class DefaultGenerator(GenerationComponent):

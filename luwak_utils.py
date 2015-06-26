@@ -6,6 +6,9 @@ from luwak.generate import *
 import argparse
 import sys
 import os
+import shutil
+
+from pygments.formatters import HtmlFormatter
 
 def process_start(*args, **kwargs):
 
@@ -33,16 +36,29 @@ def process_start(*args, **kwargs):
     os.chdir(params['project_name'])
 
     # Make output 
+
     output_dir = Settings.default_data['output_dir']
     make_directory(output_dir)
+
+    # copy start template
+    startTemplateDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'start')
+    for src in [os.path.join(startTemplateDir, i) for i in os.listdir(startTemplateDir)]:
+        if os.path.isfile(src):
+            shutil.copy(src, output_dir)
+        else:
+            print os.path.join(os.path.join(output_dir, os.path.basename(src)))
+            shutil.copytree(src, os.path.join(output_dir, os.path.basename(src)))
+
+    with open(os.path.join(output_dir, 'css', 'pygments.css'), 'w') as f:
+        f.write(HtmlFormatter(style='monokai').get_style_defs('.codehilite'))
+
 
     # Make content directory
     source_dir = Settings.default_data['source_dir']
     make_directory(source_dir)
     olddir = os.getcwd()
     os.chdir(source_dir)
-    with open('hello.md', 'w') as f:
-        f.write('hello')
+    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tests', 'hello.md'), '.')
     os.chdir(olddir)
 
     # Make config file
@@ -68,17 +84,9 @@ def process_generate(*args, **kwargs):
     for fpath in contentFiles:
         fname = os.path.basename(fpath)
         htmlContent = contentReader.generate_html(fpath)
-        html = templater.combine(htmlContent, fname)
+        metaContent = contentReader.generate_meta(fpath)
+        html = templater.combine(htmlContent, fname=fname, meta=metaContent)
         contentWriter.output(html, fname)
-
-
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
     # root parser
