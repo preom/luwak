@@ -51,21 +51,83 @@ Features:
 
     script to start a project
 
+    recommendation 
 
 
+=======================
+
+* theme packaging
+* validation
+
+=======================
+    
+how they're organized, next, prev, etc
+
+=======================
+plugins
+
+=======================
+
+meta
 
 
+indexed content
+
+prev, next
+tags
+project name
+author
+
+post title
+post summary
+post authors
+
+=======================
+
+Examples of config files for comparison
 
 
+========================
+
+source content formats:
+    markdown, 
+
+    possible:
+        pandoc, rest, 
 
 
+=======================
+
+Preprocessors
+Post processors
+plugins
 
 
+----
+code highlighting
+
+more themes
+theme rules
+----
+post management
+docs
+
+rss feed
+
+images
+
+category/tags
+
+read time
+
+disqus 
+
+incremental builds
+
+pygments/highlighting/theme syntax and highlighting
 
 
+better pygments handling
 
 
-
-
-
-
+categories
