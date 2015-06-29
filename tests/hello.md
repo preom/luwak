@@ -2,7 +2,9 @@ Title:      My title
 Subtitle:   My subtitle
 Summary:    A cool Summary
 Date:       June 24, 2015
-
+Tags:       first
+            second
+            last
 
 
 # Loreim Impsum 

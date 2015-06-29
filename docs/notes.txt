@@ -94,40 +94,12 @@ source content formats:
 
     possible:
         pandoc, rest, 
+========================
 
 
-=======================
-
-Preprocessors
-Post processors
-plugins
+tiemstamps and on different systems
 
 
-----
-code highlighting
+======================
 
-more themes
-theme rules
-----
-post management
-docs
-
-rss feed
-
-images
-
-category/tags
-
-read time
-
-disqus 
-
-incremental builds
-
-pygments/highlighting/theme syntax and highlighting
-
-
-better pygments handling
-
-
-categories
+post title and post file requirements

@@ -9,6 +9,8 @@ import sys
 
 from bs4 import BeautifulSoup
 
+import pdb
+
 class GenerationComponent(object):
     def __init__(self, settings):
         if type(settings) == str:
@@ -154,14 +156,10 @@ class TemplateCombinator(GenerationComponent):
     def __init__(self, settings):
         super(TemplateCombinator, self).__init__(settings)
 
-    def combine(self, html, fname=None, meta=dict()):
-        """ 
-        Takes html and produces a final html file combined with a template.
-        Can use the fname to find meta information to be used in the template 
-        generation process.
-
-        """
-
+    """
+    Returns template string
+    """
+    def get_template(self, templateType='default'):
         templateConfigFilePath = load_template_file()
         templateDirPath = os.path.dirname(templateConfigFilePath)
 
@@ -170,14 +168,33 @@ class TemplateCombinator(GenerationComponent):
 
         # TODO match fname against rules
 
-        with open(os.path.join(templateDirPath, templateConfig['default']), 'r') as f:
+        with open(os.path.join(templateDirPath, templateConfig[templateType]), 'r') as f:
             templateHtml = f.read()
 
+        return templateHtml
+
+
+    def combine(self, html, fname=None, meta=dict()):
+        """ 
+        Takes html and produces a final html file combined with a template.
+        Can use the fname to find meta information to be used in the template 
+        generation process.
+
+        """
+
+        templateHtml = self.get_template()
         templateSoup = BeautifulSoup(templateHtml)
         htmlSoup = BeautifulSoup(html)
 
         tag = templateSoup.find(class_='luwak-content')
         tag.insert(1, htmlSoup)
+
+        print meta
+
+        if 'tags' in meta:
+            htmlSoup = BeautifulSoup(''.join(["<span class='tag well'>{}</span> ".format(tag) for tag in meta['tags']]))
+            tag = templateSoup.find(class_='luwak-tags')
+            tag.insert(1, htmlSoup)
 
         if 'title' in meta:
             tag = templateSoup.find(class_='luwak-title')
@@ -186,14 +203,31 @@ class TemplateCombinator(GenerationComponent):
             except:
                 print "Warning template has no title or other error"
 
-        print templateSoup
-
         #print templateSoup
         endProduct = templateSoup.prettify()
 
-        print meta
         return endProduct
 
+    def combine_index(self, postList):
+        templateHtml = self.get_template('index')
+        postListHtml = []
+        for title, href in postList:
+            postListHtml.append('<a href=\'{1}\'>{0}</a>'.format(title, href))
+
+        listSoup = BeautifulSoup('<br>'.join(postListHtml))    
+        templateSoup = BeautifulSoup(templateHtml)
+
+        tag = templateSoup.find(class_='luwak-index')
+
+        print templateSoup
+        print tag
+
+        if not tag:
+            raise ValueError('No luwak-index in index template')
+
+        tag.insert(1, listSoup)
+
+        return templateSoup.prettify()
 
 class ContentWriter(GenerationComponent):
     def __init__(self, settings):
@@ -210,9 +244,12 @@ class ContentWriter(GenerationComponent):
         os.chdir(project_path)
         os.chdir(output_dir)
         with open(newName, 'w') as f:
+            print type(f)
             f.write(html)
 
         os.chdir(oldDir)
+
+        return newName
 
 
 class DefaultGenerator(GenerationComponent):

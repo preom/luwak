@@ -58,7 +58,11 @@ def process_start(*args, **kwargs):
     make_directory(source_dir)
     olddir = os.getcwd()
     os.chdir(source_dir)
-    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tests', 'hello.md'), '.')
+    testFilesDirPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tests')
+    for i in os.listdir(testFilesDirPath):
+        pth = os.path.join(testFilesDirPath, i)
+        if os.path.isfile(pth):
+            shutil.copy(pth, '.')
     os.chdir(olddir)
 
     # Make config file
@@ -81,12 +85,18 @@ def process_generate(*args, **kwargs):
 
     contentFiles = content_loader.get_content_paths()
 
+    postList = []
+
     for fpath in contentFiles:
         fname = os.path.basename(fpath)
         htmlContent = contentReader.generate_html(fpath)
         metaContent = contentReader.generate_meta(fpath)
         html = templater.combine(htmlContent, fname=fname, meta=metaContent)
-        contentWriter.output(html, fname)
+        href = contentWriter.output(html, fname)
+        postList.append((metaContent['title'][0], href))
+
+    index_html = templater.combine_index(postList)
+    contentWriter.output(index_html, 'index.html')
 
 if __name__ == "__main__":
     # root parser
