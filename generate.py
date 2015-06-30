@@ -10,6 +10,9 @@ import sys
 from bs4 import BeautifulSoup
 
 import pdb
+import datetime
+
+import sqlite3
 
 class GenerationComponent(object):
     def __init__(self, settings):
@@ -189,7 +192,6 @@ class TemplateCombinator(GenerationComponent):
         tag = templateSoup.find(class_='luwak-content')
         tag.insert(1, htmlSoup)
 
-        print meta
 
         if 'tags' in meta:
             htmlSoup = BeautifulSoup(''.join(["<span class='tag well'>{}</span> ".format(tag) for tag in meta['tags']]))
@@ -218,9 +220,6 @@ class TemplateCombinator(GenerationComponent):
         templateSoup = BeautifulSoup(templateHtml)
 
         tag = templateSoup.find(class_='luwak-index')
-
-        print templateSoup
-        print tag
 
         if not tag:
             raise ValueError('No luwak-index in index template')
@@ -251,6 +250,47 @@ class ContentWriter(GenerationComponent):
 
         return newName
 
+class IterativeBuilder(GenerationComponent):
+    def __init__(self, settings):
+        super(IterativeBuilder, self).__init__(settings)
+
+    def content_filter(self, contentList):
+        dbPath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
+        conn = sqlite3.connect(dbPath, detect_types=sqlite3.PARSE_DECLTYPES)
+        conn.row_factory = sqlite3.Row
+
+        cursor = conn.cursor()
+        sourceDir = os.path.join(self.settings['project_path'], self.settings['source_dir'])
+        resultList = []
+
+        for fpath in contentList:
+            relativeFname = os.path.relpath(fpath, sourceDir) 
+            modtime = datetime.datetime.fromtimestamp(os.stat(fpath).st_mtime)
+
+            cursor.execute('select * from records where filename=?', (relativeFname,))
+            row = cursor.fetchone()
+            if row is None:
+                cursor.execute('insert into records values(?, ?)', (relativeFname, modtime))
+                conn.commit()
+            else:
+                dbModtime = row['modified']
+                if (modtime > dbModtime): # check if updated
+                    #TODO Delete this
+                    cursor.execute('update records set modified=? where filename=?', (modtime, relativeFname))
+                    conn.commit()
+                else:
+                    continue
+
+            resultList.append(fpath)
+
+        # cursor.execute('select * from records')
+        # rows = cursor.fetchall()
+        # print rows
+
+        print resultList
+
+        return resultList
+
 
 class DefaultGenerator(GenerationComponent):
     def __init__(self, settings):
@@ -263,3 +303,4 @@ class DefaultGenerator(GenerationComponent):
 
     def generate(self):
         pass
+

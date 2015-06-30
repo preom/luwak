@@ -7,6 +7,7 @@ import argparse
 import sys
 import os
 import shutil
+import sqlite3
 
 from pygments.formatters import HtmlFormatter
 
@@ -35,8 +36,21 @@ def process_start(*args, **kwargs):
     make_directory(params['project_name'])
     os.chdir(params['project_name'])
 
-    # Make output 
+    # Make database
+    dbDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'db')
+    with open(os.path.join(dbDir, 'main.sql'), 'r') as f:
+        sqlScript = f.read()
 
+    make_directory('db')
+    oldDir = os.getcwd()
+    os.chdir('db')
+    conn = sqlite3.connect(Settings.default_data['db_name'])
+    cursor = conn.cursor()
+    cursor.executescript(sqlScript)
+    conn.commit()
+    os.chdir(oldDir)
+
+    # Make output 
     output_dir = Settings.default_data['output_dir']
     make_directory(output_dir)
 
@@ -83,7 +97,11 @@ def process_generate(*args, **kwargs):
     templater = TemplateCombinator(proj_settings)
     contentWriter = ContentWriter(proj_settings)
 
+    iterativeBuidler = IterativeBuilder(proj_settings)
+
     contentFiles = content_loader.get_content_paths()
+
+    contentFiles = iterativeBuidler.content_filter(contentFiles)
 
     postList = []
 

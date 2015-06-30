@@ -12,7 +12,8 @@ class Settings(object):
     default_data = {
         'output_dir': 'output',
         'source_dir': 'content',
-        'project_path': ''
+        'project_path': '',
+        'db_name': 'main_db.sqlite3'
     }
 
     def __init__(self):
