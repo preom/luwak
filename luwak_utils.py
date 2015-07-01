@@ -92,12 +92,13 @@ def process_generate(*args, **kwargs):
 
     proj_settings = GenerationComponent.load_project_file(params['project_path'])
 
+    iterativeBuidler = IterativeBuilder(proj_settings)
+    dbManager = DatabaseManager(proj_settings)
+
     content_loader = ContentLoader(proj_settings)
     contentReader = ContentReader(proj_settings)
     templater = TemplateCombinator(proj_settings)
     contentWriter = ContentWriter(proj_settings)
-
-    iterativeBuidler = IterativeBuilder(proj_settings)
 
     contentFiles = content_loader.get_content_paths()
 

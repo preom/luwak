@@ -14,6 +14,7 @@ import datetime
 
 import sqlite3
 
+
 class GenerationComponent(object):
     def __init__(self, settings):
         if type(settings) == str:
@@ -234,6 +235,7 @@ class ContentWriter(GenerationComponent):
     def __init__(self, settings):
         super(ContentWriter, self).__init__(settings)
 
+
     def output(self, html, fname=None):
         output_dir = self.settings['output_dir']
         project_path = self.settings['project_path']
@@ -256,7 +258,9 @@ class IterativeBuilder(GenerationComponent):
         super(IterativeBuilder, self).__init__(settings)
 
     def content_filter(self, contentList):
-        dbPath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
+        dbManager = DatabaseManager(self.settings)
+        dbPath = dbManager.dbFilePath
+
         conn = sqlite3.connect(dbPath, detect_types=sqlite3.PARSE_DECLTYPES)
         conn.row_factory = sqlite3.Row
 
@@ -286,10 +290,15 @@ class IterativeBuilder(GenerationComponent):
 
         return resultList
 
+class DatabaseManager(GenerationComponent):
+    def __init__(self, settings):
+        super(DatabaseManager, self).__init__(settings)
+        self.dbFilePath = dbPath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
+
 
 class DefaultGenerator(GenerationComponent):
     def __init__(self, settings):
-        super(DefaultGenerator, self).__init__()
+        super(DefaultGenerator, self).__init__(settings)
 
         self.content_loader = ContentLoader(self.settings)
         self.content_reader = ContentReader(self.settings)
@@ -298,4 +307,5 @@ class DefaultGenerator(GenerationComponent):
 
     def generate(self):
         pass
+
 
