@@ -37,9 +37,11 @@ class GenerationComponent(object):
             with open(Settings.CONFIG_FILENAME, 'r') as f:
                     settings = json.loads(f.read())
 
-        except:
-            print "Error loading the config file"
-            raise
+        except IOError:
+            print " >>> ----------------------------- <<< "
+            print " >>> Error loading the config file <<< "
+            print " >>> ----------------------------- <<< "
+            sys.exit(0) 
 
         os.chdir(cwd)
 
@@ -243,7 +245,6 @@ class ContentWriter(GenerationComponent):
         os.chdir(project_path)
         os.chdir(output_dir)
         with open(newName, 'w') as f:
-            print type(f)
             f.write(html)
 
         os.chdir(oldDir)
@@ -282,12 +283,6 @@ class IterativeBuilder(GenerationComponent):
                     continue
 
             resultList.append(fpath)
-
-        # cursor.execute('select * from records')
-        # rows = cursor.fetchall()
-        # print rows
-
-        print resultList
 
         return resultList
 
