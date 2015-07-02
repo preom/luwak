@@ -102,17 +102,113 @@ def process_generate(*args, **kwargs):
 
     contentFiles = content_loader.get_content_paths()
 
+    if params['do_flush']:
+        conn = sqlite3.connect(dbManager.dbFilePath)
+        cursor = conn.cursor()
+        cursor.execute('delete from records')
+        cursor.execute('delete from meta')
+        conn.commit()
+
     contentFiles = iterativeBuidler.content_filter(contentFiles)
 
     postList = []
+    metaList = []
+
+    conn = sqlite3.connect(dbManager.dbFilePath)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    toUpdateList = [] #TODO change name from toUpdateList
+    sourceDir = os.path.join(proj_settings['project_path'], proj_settings['source_dir'])
+    for fpath in contentFiles:
+        relativeFname = os.path.relpath(fpath, sourceDir) 
+        cursor.execute('select * from meta where filename=?', (relativeFname,))
+        row = cursor.fetchone()
+        meta = contentReader.generate_meta(fpath)
+        category =  meta.get('category', [None])[0]
+
+        if row:
+            if 'category' in row.keys():
+                storedCategory = row['category']
+            else:
+                storedCategory = None
+
+            if storedCategory != category:
+                toUpdateList.append((relativeFname, meta, 'update')), 
+
+        else:
+            toUpdateList.append((relativeFname, meta, 'add'))
+
+    for relativeFname, meta, status in toUpdateList:
+        category = meta.get('category', [None])[0]
+        title = meta['title'][0]
+        if status == 'add':
+            cursor.execute('insert into meta (filename, category, title) values(?, ?, ?)', (relativeFname, category, title))
+            conn.commit()
+
+            cursor.execute('select count(*) from meta where category=? and title<?', (category, title))
+            rowCount = cursor.fetchone()[0]
+
+            # SKIP NULL VALUES:
+            if category is None:
+                continue
+
+            if rowCount <= 0:
+                cursor.execute('select * from meta where category=? order by category, title limit 2 offset ?', (category, rowCount))
+                results = cursor.fetchall()
+                prev = None
+                current = results[0]
+
+                if len(results) > 1:
+                    next = results[1]
+                else:
+                    next = None
+
+            else:
+                cursor.execute('select * from meta where category=? order by category, title limit 3 offset ?', (category, rowCount - 1))
+                results = cursor.fetchall()
+                while (len(results) < 3):
+                    results.append(None)
+
+                prev, current, next = results 
+
+            # Link Next
+            if next:
+                cursorArgs = (next['filename'], current['filename'])
+                cursor.execute('update meta set nextFilename=? where filename=?', cursorArgs)
+
+                cursorArgs = (current['filename'], next['filename'])
+                cursor.execute('update meta set prevFilename=? where filename=?', cursorArgs)
+
+            # Link previous
+            if prev:
+                cursorArgs = (prev['filename'], current['filename'])
+                cursor.execute('update meta set prevFilename=? where filename=?', cursorArgs)
+
+                cursorArgs = (current['filename'], prev['filename'])
+                cursor.execute('update meta set nextFilename=? where filename=?', cursorArgs)
+
+            conn.commit()
+
 
     for fpath in contentFiles:
         fname = os.path.basename(fpath)
         htmlContent = contentReader.generate_html(fpath)
         metaContent = contentReader.generate_meta(fpath)
+
+        relativeFname = os.path.relpath(fpath, sourceDir) 
+        cursor.execute('select * from meta where filename=?', (relativeFname,))
+        row = cursor.fetchone()
+        # transform from source filename to output filename
+        if row['prevFilename']:
+            metaContent['prev'] = [contentWriter.generate_name(row['prevFilename'])]
+        if row['nextFilename']:
+            metaContent['next'] = [contentWriter.generate_name(row['nextFilename'])]
+
         html = templater.combine(htmlContent, fname=fname, meta=metaContent)
         href = contentWriter.output(html, fname)
         postList.append((metaContent['title'][0], href))
+
 
     index_html = templater.combine_index(postList)
     contentWriter.output(index_html, 'index.html')
@@ -133,6 +229,7 @@ if __name__ == "__main__":
     # 'generate' parser
     parser_generate = subparsers.add_parser('generate', help='Generates luwak project content')
     parser_generate.add_argument('-p', '--path', help='Path to root luwak project (where the config file is)', dest='project_path')
+    parser_generate.add_argument('-f', '--flush', help='', dest='do_flush', action='store_true')
     parser_generate.set_defaults(func=process_generate)
 
     args = parser.parse_args()

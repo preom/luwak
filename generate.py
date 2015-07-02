@@ -208,6 +208,22 @@ class TemplateCombinator(GenerationComponent):
             except:
                 print "Warning template has no title or other error"
 
+        if 'next' in meta:
+            tag = templateSoup.find(class_='luwak-next')
+            htmlSoup = BeautifulSoup('<a href=\'{}\'>Next</a>'.format(meta['next'][0]))
+            try:
+                tag.insert(1, htmlSoup)
+            except:
+                print "Warning template has no next or other error"
+
+        if 'prev' in meta:
+            print meta['prev'][0]
+            tag = templateSoup.find(class_='luwak-prev')
+            htmlSoup = BeautifulSoup('<a href=\'{}\'>Prev</a>'.format(meta['prev'][0]))
+            try:
+                tag.insert(1, htmlSoup)
+            except:
+                print "Warning template has no prev or other error"
         #print templateSoup
         endProduct = templateSoup.prettify()
 
@@ -235,13 +251,16 @@ class ContentWriter(GenerationComponent):
     def __init__(self, settings):
         super(ContentWriter, self).__init__(settings)
 
+    def generate_name(self, fname):
+        newName = ''.join(fname.split('.')[:-1]+['.html'])
+        return newName
 
     def output(self, html, fname=None):
         output_dir = self.settings['output_dir']
         project_path = self.settings['project_path']
         newName = ''
 
-        newName = ''.join(fname.split('.')[:-1]+['.html'])
+        newName = self.generate_name(fname)
 
         oldDir = os.getcwd()
         os.chdir(project_path)
@@ -287,6 +306,11 @@ class IterativeBuilder(GenerationComponent):
                     continue
 
             resultList.append(fpath)
+
+        if len(resultList) == 0:
+            print ">>>----------------<<<"
+            print ">>> All up to date <<<"
+            print ">>>----------------<<<"
 
         return resultList
 
