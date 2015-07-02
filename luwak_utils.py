@@ -9,6 +9,8 @@ import os
 import shutil
 import sqlite3
 
+import time
+
 from pygments.formatters import HtmlFormatter
 
 def process_start(*args, **kwargs):
@@ -83,6 +85,8 @@ def process_start(*args, **kwargs):
     Settings.generate_default_settings_file()
 
 def process_generate(*args, **kwargs):
+    startTime = time.time()
+
     CONFIG_FILENAME = Settings.CONFIG_FILENAME
 
     params = vars(args[0])
@@ -212,6 +216,9 @@ def process_generate(*args, **kwargs):
 
     index_html = templater.combine_index(postList)
     contentWriter.output(index_html, 'index.html')
+
+    elapsedTime = time.time() - startTime
+    print ">> -- Time: {:.4f} -- <<".format(elapsedTime)
 
 if __name__ == "__main__":
     # root parser
