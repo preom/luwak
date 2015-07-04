@@ -31,6 +31,16 @@ body p {
 .codehilite {                                                                   
     border-radius: 10px;                                                        
 }                                                                               
+
+/* Index styles */
+
+.index-post .post-title {
+    font-size: 3em;
+}
+
+.index-post {
+    text-align: center;
+}
                                                                               
                                                                               
 /*Custom bootstrap*/                                                            

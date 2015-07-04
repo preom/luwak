@@ -230,12 +230,24 @@ class TemplateCombinator(GenerationComponent):
         return endProduct
 
     def combine_index(self, pageInfo):
+        def a_formatter(title, href):
+            return "<a href='{1}'>{0}</a>".format(title, href)
+
         templateHtml = self.get_template('index')
         postListHtml = []
-        for title, href in pageInfo['postList']:
-            postListHtml.append('<a href=\'{1}\'>{0}</a>'.format(title, href))
+        for title, href, article in pageInfo['postList']:
 
-        listSoup = BeautifulSoup('<br>'.join(postListHtml))    
+            aHtml = '<a href=\'{1}\'>{0}</a>'.format(title.title(), href)
+            dateHtml = '<span>{}</span>'.format(article['created'].strftime("%b %d, %y"))
+            postStr = """
+                <div class=\'index-post\'>
+                    <div class=\'post-title\'>{aHtml}</div>
+                    <div class=\'post-date\'>{dateHtml}</div>
+                </div>
+            """
+            postListHtml.append(postStr.format(aHtml=aHtml,dateHtml=dateHtml))
+
+        listSoup = BeautifulSoup('<hr>'.join(postListHtml))    
         templateSoup = BeautifulSoup(templateHtml)
 
         tag = templateSoup.find(class_='luwak-index')
@@ -247,15 +259,10 @@ class TemplateCombinator(GenerationComponent):
             tag.append(listSoup)
 
 
-        def a_formatter(title, href):
-            return "<a href='{1}'>{0}</a>".format(title, href)
-
         leftAdjacent = [a_formatter(title, href) for title, href in pageInfo['leftAdjacentPages']]
         rightAdjacent = [a_formatter(title, href) for title, href in pageInfo['rightAdjacentPages']]
 
         currentpage = a_formatter(pageInfo['currentPage'][0], pageInfo['currentPage'][1])
-
-        print leftAdjacent, currentpage, rightAdjacent
 
         page_list = leftAdjacent + [currentpage] + rightAdjacent
         for ind, val in enumerate(page_list):
@@ -266,9 +273,8 @@ class TemplateCombinator(GenerationComponent):
 
             page_list[ind] = "<li class='{}'>{}</li>".format(cls, val)
 
-        print page_list
 
-        page_list = ['<ul class="pagination">'] + page_list + ['</ul>']
+        page_list = ['<ul class="pagination pull-right">'] + page_list + ['</ul>']
 
         paginationSoup = BeautifulSoup(''.join(page_list))
 

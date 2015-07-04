@@ -130,6 +130,8 @@ def process_generate(*args, **kwargs):
         cursor.execute('select * from meta where filename=?', (relativeFname,))
         row = cursor.fetchone()
         meta = contentReader.generate_meta(fpath)
+        meta['modtime'] = os.path.getmtime(fpath)
+
         category =  meta.get('category', [None])[0]
 
         if row:
@@ -147,8 +149,33 @@ def process_generate(*args, **kwargs):
     for relativeFname, meta, status in toUpdateList:
         category = meta.get('category', [None])[0]
         title = meta['title'][0]
+
+        try: 
+            metaDate = datetime.datetime.strptime(meta['date'][0], '%Y-%m-%d')
+        except ValueError:
+            print '>>--------------------------------------------------------<<'
+            print '>>----------------------- Error --------------------------<<'
+            print '>>--------------------------------------------------------<<'
+            print ''
+            print "File: ", relativeFname
+            print "Mandatory meta date could not be parsed"
+            print "Make sure that it is in the correct format."
+            print "Either `YYYY-MM-DD` (e.g. 2015-07-04)"
+            #print "Or `MONTHNAME MM, YYYY` (e.g. July 04, 2015)"
+            print ""
+            print "Found: ", meta['date']
+            print ""
+            print '>>--------------------------------------------------------<<'
+            print ""
+            raise
+
+        # Important: date value in db must be unique for article navigation linking to work (correct row number); 
+        # content file doesn't specify hour, minute, etc. therefore combined with last modifed
+        date = datetime.datetime.fromtimestamp(meta['modtime'])
+        date = date.replace(year=metaDate.year, month=metaDate.month, day=metaDate.day)
+
         if status == 'add':
-            cursor.execute('insert into meta (filename, category, title) values(?, ?, ?)', (relativeFname, category, title))
+            cursor.execute('insert into meta (filename, category, title, created) values(?, ?, ?, ?)', (relativeFname, category, title, date))
             conn.commit()
 
             cursor.execute('select count(*) from meta where category=? and title<?', (category, title))

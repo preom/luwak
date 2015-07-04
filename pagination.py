@@ -31,7 +31,7 @@ class PaginationDbDataSource(PaginationDataSource):
         if not dbfilepath:
             raise ValueError("PaginationDbDataSource requires a path to a database")
 
-        self.conn = sqlite3.connect(dbfilepath)
+        self.conn = sqlite3.connect(dbfilepath, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
         self.table = 'meta'
@@ -78,15 +78,16 @@ class Paginator(object):
 
 
             for article in page:
-                # load from row objec to dict
+                # load from row object to dict
                 title = article['title']
                 filename = article['filename']
+                created = article['created']
 
                 #TODO: load from db instead to presrve data integrity
                 newName = ''.join(filename.split('.')[:-1]+['.html'])
                 href = newName
 
-                postList.append((title, href))
+                postList.append((title, href, article))
 
             pageInfo['postList'] = postList
 
