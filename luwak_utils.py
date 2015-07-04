@@ -2,6 +2,7 @@
 
 from luwak.settings import Settings
 from luwak.generate import *
+from luwak.pagination import *
 
 import argparse
 import sys
@@ -214,8 +215,15 @@ def process_generate(*args, **kwargs):
         postList.append((metaContent['title'][0], href))
 
 
-    index_html = templater.combine_index(postList)
-    contentWriter.output(index_html, 'index.html')
+    #index_html = templater.combine_index(postList)
+    #contentWriter.output(index_html, 'index.html')
+
+    pgDSource = PaginationDbDataSource(dbManager.dbFilePath)
+    paginator = Paginator(pgDSource)
+    for pageInfo in paginator.get_generator():
+        index_html = templater.combine_index(pageInfo)
+        print '225: ', pageInfo['currentPage']
+        contentWriter.output(index_html, 'index{}.html'.format(pageInfo['currentPage'][0]))
 
     elapsedTime = time.time() - startTime
     print ">> -- Time: {:.4f} -- <<".format(elapsedTime)

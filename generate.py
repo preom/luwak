@@ -229,21 +229,55 @@ class TemplateCombinator(GenerationComponent):
 
         return endProduct
 
-    def combine_index(self, postList):
+    def combine_index(self, pageInfo):
         templateHtml = self.get_template('index')
         postListHtml = []
-        for title, href in postList:
+        for title, href in pageInfo['postList']:
             postListHtml.append('<a href=\'{1}\'>{0}</a>'.format(title, href))
 
         listSoup = BeautifulSoup('<br>'.join(postListHtml))    
         templateSoup = BeautifulSoup(templateHtml)
 
         tag = templateSoup.find(class_='luwak-index')
+        paginationTag = templateSoup.find(class_='luwak-pagination')
 
         if not tag:
             raise ValueError('No luwak-index in index template')
+        else:
+            tag.append(listSoup)
 
-        tag.insert(1, listSoup)
+
+        def a_formatter(title, href):
+            return "<a href='{1}'>{0}</a>".format(title, href)
+
+        leftAdjacent = [a_formatter(title, href) for title, href in pageInfo['leftAdjacentPages']]
+        rightAdjacent = [a_formatter(title, href) for title, href in pageInfo['rightAdjacentPages']]
+
+        currentpage = a_formatter(pageInfo['currentPage'][0], pageInfo['currentPage'][1])
+
+        print leftAdjacent, currentpage, rightAdjacent
+
+        page_list = leftAdjacent + [currentpage] + rightAdjacent
+        for ind, val in enumerate(page_list):
+            if val == currentpage:
+                cls = 'active'
+            else:
+                cls = ''
+
+            page_list[ind] = "<li class='{}'>{}</li>".format(cls, val)
+
+        print page_list
+
+        page_list = ['<ul class="pagination">'] + page_list + ['</ul>']
+
+        paginationSoup = BeautifulSoup(''.join(page_list))
+
+        tag = templateSoup.find(class_='luwak-pagination')
+
+        if paginationTag:
+            paginationTag.append(paginationSoup)
+        else:
+            print "WARNING: no page index"
 
         return templateSoup.prettify()
 
