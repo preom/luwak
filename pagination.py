@@ -57,12 +57,22 @@ class PaginationDbDataSource(PaginationDataSource):
 
 
 class Paginator(object):
-    """ Takes a data source and outputs a nested data structure """
+    """ Takes a data source and outputs a nested data structure 
+
+    Add start page number
+    """
 
     def __init__(self, paginationDataSource):
         self.paginationDataSource = paginationDataSource
         self.pagePreviewSize = 4
         self.outputString = 'index{}.html'
+
+    def indexHrefFormatter(self, pagenum):
+        if pagenum == 1:
+            pagenum = ""
+
+        return self.outputString.format(pagenum)
+
 
 
     def get_generator(self):
@@ -110,12 +120,13 @@ class Paginator(object):
                 pageInfo['lastPage'] = self.paginationDataSource.pageCount
 
             for l in [pageInfo['leftAdjacentPages'], pageInfo['rightAdjacentPages']]:
-                l[:] = [(i, self.outputString.format(i)) for i in l]
+                l[:] = [(i, self.indexHrefFormatter(i)) for i in l]
 
             for l in ['firstPage', 'lastPage', 'currentPage']:
                 # pageInfo[l] can evaluate to False if index is 0
                 if pageInfo[l] is not None:
-                    pageInfo[l] = (pageInfo[l], self.outputString.format(pageInfo[l]))
+                    pageInfo[l] = (pageInfo[l], self.indexHrefFormatter(pageInfo[l]))
+                    print pageInfo[l]
 
             yield pageInfo
 

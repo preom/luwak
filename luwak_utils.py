@@ -250,7 +250,7 @@ def process_generate(*args, **kwargs):
     for pageInfo in paginator.get_generator():
         index_html = templater.combine_index(pageInfo)
         print '225: ', pageInfo['currentPage']
-        contentWriter.output(index_html, 'index{}.html'.format(pageInfo['currentPage'][0]))
+        contentWriter.output(index_html, pageInfo['currentPage'][1])
 
     elapsedTime = time.time() - startTime
     print ">> -- Time: {:.4f} -- <<".format(elapsedTime)
