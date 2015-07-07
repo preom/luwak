@@ -194,12 +194,26 @@ class TemplateCombinator(GenerationComponent):
 
         tag = templateSoup.find(class_='luwak-content')
         tag.insert(1, htmlSoup)
+        templateSoup = BeautifulSoup(templateSoup.encode_contents())
+
+        def cleanup():
+            return BeautifulSoup(templateSoup.encode_contents())
+
+        if 'date' in meta:
+            t = templateSoup.find(class_='luwak-date')
+            date = datetime.datetime.strptime(meta['date'][0], '%Y-%m-%d')
+            t.append(date.strftime('%B %d, %Y'))
+            templateSoup = cleanup()
 
 
         if 'tags' in meta:
-            htmlSoup = BeautifulSoup(''.join(["<span class='tag well'>{}</span> ".format(tag) for tag in meta['tags']]))
+            tagString = "<span class='tag label label-default'> <span class='glyphicon glyphicon-tag'></span> {}</span>"
+            tagHtml = ''.join([tagString.format(tag) for tag in meta['tags']])
+            htmlSoup = BeautifulSoup(tagHtml)
             tag = templateSoup.find(class_='luwak-tags')
+            print tag, meta['tags']
             tag.insert(1, htmlSoup)
+            templateSoup = cleanup()
 
         if 'title' in meta:
             tag = templateSoup.find(class_='luwak-title')
@@ -207,23 +221,39 @@ class TemplateCombinator(GenerationComponent):
                 tag.string.replace_with(meta['title'][0])
             except:
                 print "Warning template has no title or other error"
+            templateSoup = cleanup()
 
         if 'next' in meta:
             tag = templateSoup.find(class_='luwak-next')
-            htmlSoup = BeautifulSoup('<a href=\'{}\'>Next</a>'.format(meta['next'][0]))
+            soupText = '<a href=\'{}\'>Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a>'
+            htmlSoup = BeautifulSoup(soupText.format(meta['next'][0]))
             try:
                 tag.insert(1, htmlSoup)
             except:
+                print templateSoup
                 print "Warning template has no next or other error"
+            templateSoup = cleanup()
 
         if 'prev' in meta:
             print meta['prev'][0]
             tag = templateSoup.find(class_='luwak-prev')
-            htmlSoup = BeautifulSoup('<a href=\'{}\'>Prev</a>'.format(meta['prev'][0]))
+            soupText = '<a href=\'{}\'><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev </a>'
+            htmlSoup = BeautifulSoup(soupText.format(meta['prev'][0]))
             try:
                 tag.insert(1, htmlSoup)
             except:
                 print "Warning template has no prev or other error"
+            templateSoup = cleanup()
+
+        #TODO Fix this arbitrary piece of code
+        if len(templateSoup) < 3000:
+            tag = templateSoup.find(class_='to-top')
+            if tag:
+                tag['class'].append('hidden')
+
+            print tag
+
+
         #print templateSoup
         endProduct = templateSoup.prettify()
 
