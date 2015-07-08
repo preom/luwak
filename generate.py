@@ -199,60 +199,54 @@ class TemplateCombinator(GenerationComponent):
         def cleanup():
             return BeautifulSoup(templateSoup.encode_contents())
 
-        if 'date' in meta:
-            t = templateSoup.find(class_='luwak-date')
-            date = datetime.datetime.strptime(meta['date'][0], '%Y-%m-%d')
-            t.append(date.strftime('%B %d, %Y'))
-            templateSoup = cleanup()
+        def date_formatter(metaDate):
+            date = datetime.datetime.strptime(metaDate[0], '%Y-%m-%d')
+            return date.strftime('%B %d, %Y')
 
-
-        if 'tags' in meta:
+        def tag_formatter(metaTags):
             tagString = "<span class='tag label label-default'> <span class='glyphicon glyphicon-tag'></span> {}</span>"
             tagHtml = ''.join([tagString.format(tag) for tag in meta['tags']])
-            htmlSoup = BeautifulSoup(tagHtml)
-            tag = templateSoup.find(class_='luwak-tags')
-            print tag, meta['tags']
-            tag.insert(1, htmlSoup)
-            templateSoup = cleanup()
 
-        if 'title' in meta:
-            tag = templateSoup.find(class_='luwak-title')
-            try:
-                tag.string.replace_with(meta['title'][0])
-            except:
-                print "Warning template has no title or other error"
-            templateSoup = cleanup()
+        def prev_formatter(metaPrev):
+            tagString = '<a href=\'{}\'><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev </a>'
+            return tagString.format(metaPrev[0])
 
-        if 'next' in meta:
-            tag = templateSoup.find(class_='luwak-next')
-            soupText = '<a href=\'{}\'>Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a>'
-            htmlSoup = BeautifulSoup(soupText.format(meta['next'][0]))
-            try:
-                tag.insert(1, htmlSoup)
-            except:
-                print templateSoup
-                print "Warning template has no next or other error"
-            templateSoup = cleanup()
+        def next_formatter(metaNext):
+            tagString = '<a href=\'{}\'>Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a>'
+            return tagString.format(metaNext[0])
 
-        if 'prev' in meta:
-            print meta['prev'][0]
-            tag = templateSoup.find(class_='luwak-prev')
-            soupText = '<a href=\'{}\'><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev </a>'
-            htmlSoup = BeautifulSoup(soupText.format(meta['prev'][0]))
-            try:
-                tag.insert(1, htmlSoup)
-            except:
-                print "Warning template has no prev or other error"
-            templateSoup = cleanup()
+
+        metaTags = ['date', 'tags', 'title', 'prev', 'next']
+        formatters = [date_formatter, tag_formatter, None, prev_formatter, next_formatter]
+        template_class = ['luwak-date', 'luwak-tags', 'luwak-title', 'luwak-prev', 'luwak-next']
+
+        assert(len(metaTags) == len(formatters) == len(template_class))
+
+        for mTag, frmt, cls in zip(metaTags, formatters, template_class):
+            if mTag in meta:
+                tag = templateSoup.find(class_=cls)
+                if frmt:
+                    tagContent = frmt(meta[mTag])
+                else:
+                    tagContent = meta[mTag][0]
+
+                if tagContent:
+                    soup = BeautifulSoup(tagContent, 'html.parser')
+                else:
+                    continue
+
+                try:
+                    tag.append(soup)
+                except:
+                    print "Error with parsing " + mTag
+
+                templateSoup = cleanup()
 
         #TODO Fix this arbitrary piece of code
         if len(templateSoup) < 3000:
             tag = templateSoup.find(class_='to-top')
             if tag:
                 tag['class'].append('hidden')
-
-            print tag
-
 
         #print templateSoup
         endProduct = templateSoup.prettify()
