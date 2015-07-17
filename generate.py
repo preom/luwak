@@ -253,6 +253,26 @@ class TemplateCombinator(GenerationComponent):
 
         return endProduct
 
+    def combine_list(self, links, listTitle=None):
+        templateHtml = self.get_template('list')
+        def a_formatter(title, href):
+            if not href:
+                href = ''
+            return "<a href='{1}'>{0}</a>".format(title, href)
+
+        linksHtml = ''.join([a_formatter(title, href) for title, href in links])
+        linksSoup = BeautifulSoup(linksHtml)
+        templateSoup = BeautifulSoup(templateHtml)
+
+        tag = templateSoup.find(class_='luwak-list')
+        tag.append(linksSoup)
+
+        if listTitle:
+            tag = templateSoup.find(class_='luwak-list-title')
+            tag.string.replace_with(listTitle)
+
+        return templateSoup.prettify()
+
     def combine_index(self, pageInfo):
         def a_formatter(title, href):
             return "<a href='{1}'>{0}</a>".format(title, href)
@@ -316,11 +336,30 @@ class ContentWriter(GenerationComponent):
         super(ContentWriter, self).__init__(settings)
 
     def generate_name(self, fname):
+        """ Takes a filename (not path) and returns a canonical filename """
+
         newName = ''.join(fname.split('.')[:-1]+['.html'])
         return newName
 
-    def output(self, html, fname=None):
-        output_dir = self.settings['output_dir']
+    def generate_dir(self, dirType):
+        validDirTypes = ['tags']
+        settingsValues = ['tags_dir']
+
+        lookup = dict(zip(validDirTypes, settingsValues))
+
+        if dirType not in validDirTypes:
+            raise ValueError("")
+
+        outputDir = os.path.join(self.settings['project_path'], self.settings['output_dir'], self.settings[lookup[dirType]])
+
+        return outputDir
+
+    def output(self, html, fname=None, dirPath=None):
+        if dirPath is None:
+            output_dir = self.settings['output_dir']
+        else:
+            output_dir = dirPath
+
         project_path = self.settings['project_path']
         newName = ''
 
@@ -335,6 +374,16 @@ class ContentWriter(GenerationComponent):
         os.chdir(oldDir)
 
         return newName
+
+    def output_specific(self, html, fname, dirType):
+        """ Stores files in the right directory 
+
+            Notes:
+                Bulk of code logic moved to self.generate_dir
+        """
+
+        return self.output(html, fname, dirPath=self.generate_dir(dirType))
+
 
 class IterativeBuilder(GenerationComponent):
     def __init__(self, settings):
@@ -378,10 +427,99 @@ class IterativeBuilder(GenerationComponent):
 
         return resultList
 
+class CategoryGenerator(GenerationComponent):
+    def __init__(self, settings):
+        super(CategoryGenerator, self).__init__(settings)
+
+    def get_tags(self, fname=None):
+        """ Get a list of all the tags in the database as a row object"""
+
+        dbManager = DatabaseManager(self.settings)
+        conn, cursor = dbManager.get_conn()
+
+        sqlString = 'Select distinct tag from tags order by tag'
+
+        cursor.execute(sqlString)
+        return cursor.fetchall()
+
+    def get_fnames_from_tag(self, tagName):
+        dbManager = DatabaseManager(self.settings)
+        conn, cursor = dbManager.get_conn()
+
+        sqlString = 'Select tags.filename, title from tags left join meta on tags.filename=meta.filename where tags.tag="{}"'.format(tagName)
+
+        cursor.execute(sqlString)
+
+        return cursor.fetchall()
+
+
+    def tag_page(self, tagName):
+        """ Return the links to posts that use 'tagName' """
+        pass
+
+
 class DatabaseManager(GenerationComponent):
     def __init__(self, settings):
         super(DatabaseManager, self).__init__(settings)
-        self.dbFilePath = dbPath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
+        self.dbFilePath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
+
+    def get_conn(self):
+        conn = sqlite3.connect(self.dbFilePath, detect_types=sqlite3.PARSE_DECLTYPES)
+        conn.row_factory = sqlite3.Row
+
+        cursor = conn.cursor()
+
+        return (conn, cursor)
+
+
+    def get_list(self, table, col, distinct=False):
+        """ returns a list of row objects  """
+
+        conn, cursor = self.get_conn()
+
+        if col is None:
+            col = '*'
+
+        if distinct:
+            distinct = "distinct"
+        else:
+            distinct = ''
+
+        sqlString = "SELECT {distinct} {col} from {table}".format(table=table, col=col, distinct=distinct)
+        cursor.execute(sqlString)
+
+        return cursor.fetchall()
+
+    def fname_formatter(self, absFPath):
+        """ Formats an absolute filepath to the format used as a key in the db 
+
+        """
+
+        sourceDir = os.path.join(self.settings['project_path'], self.settings['source_dir'])
+        relativeFname = os.path.relpath(fpath, sourceDir) 
+
+        return relativeFname
+
+    def update_tags(self, fnameKey, tags):
+        conn, cursor = self.get_conn()
+
+        cursor.execute('select tag from tags where filename=?', (fnameKey,))
+
+        tagSet = set(tags)
+        dbTagSet = set([row['tag'] for row in cursor.fetchall()])
+
+        toDelete =  dbTagSet - tagSet
+        toAdd = tagSet - dbTagSet
+
+        for tagName in toAdd:
+            cursor.execute('Insert into tags (filename, tag) values (?, ?)', (fnameKey, tagName))
+
+        for tagName in toDelete:
+            cursor.execute('Delete from tags where filename=? and tag=?', (fnameKey, tagName))
+
+        conn.commit()
+        conn.close()
+
 
 
 class DefaultGenerator(GenerationComponent):

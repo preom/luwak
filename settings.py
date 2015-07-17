@@ -12,6 +12,7 @@ class Settings(object):
     default_data = {
         'output_dir': 'output',
         'source_dir': 'content',
+        'tags_dir': 'tags',
         'project_path': '',
         'db_name': 'main_db.sqlite3'
     }

@@ -57,6 +57,13 @@ def process_start(*args, **kwargs):
     output_dir = Settings.default_data['output_dir']
     make_directory(output_dir)
 
+    # Make tags directory
+    oldDir = os.getcwd()
+    os.chdir(output_dir)
+    tags_dir = Settings.default_data['tags_dir']
+    make_directory(tags_dir)
+    os.chdir(oldDir)
+
     # copy start template
     startTemplateDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'start')
     for src in [os.path.join(startTemplateDir, i) for i in os.listdir(startTemplateDir)]:
@@ -146,6 +153,8 @@ def process_generate(*args, **kwargs):
         else:
             toUpdateList.append((relativeFname, meta, 'add'))
 
+
+    # Set meta data
     for relativeFname, meta, status in toUpdateList:
         category = meta.get('category', [None])[0]
         title = meta['title'][0]
@@ -222,7 +231,9 @@ def process_generate(*args, **kwargs):
 
             conn.commit()
 
+        dbManager.update_tags(relativeFname, meta.get('tags', []))
 
+    # Write content
     for fpath in contentFiles:
         fname = os.path.basename(fpath)
         htmlContent = contentReader.generate_html(fpath)
@@ -241,15 +252,28 @@ def process_generate(*args, **kwargs):
         href = contentWriter.output(html, fname)
         postList.append((metaContent['title'][0], href))
 
+    # Generate tag pages
+    tagGenerator = CategoryGenerator(proj_settings)
+    tags = [t['tag'] for t in tagGenerator.get_tags()]
+    tags = [(t, '/tags/{}.html'.format(t)) for t in tags]
+    html = templater.combine_list(tags, listTitle="Tags")
+    contentWriter.output_specific(html, 'index.html', 'tags')
+    for tag, tagLink in tags:
+        articles = []
+        for row in tagGenerator.get_fnames_from_tag(tag):
+            fname = os.path.basename(row['filename'])
+            fname = '/' + contentWriter.generate_name(fname)
+            articles.append((row['title'], fname))
 
-    #index_html = templater.combine_index(postList)
-    #contentWriter.output(index_html, 'index.html')
+        html = templater.combine_list(articles, listTitle=tag)
+        contentWriter.output_specific(html, '{}.html'.format(tag), 'tags')
 
+
+    # Generate Index pages
     pgDSource = PaginationDbDataSource(dbManager.dbFilePath)
     paginator = Paginator(pgDSource)
     for pageInfo in paginator.get_generator():
         index_html = templater.combine_index(pageInfo)
-        print '225: ', pageInfo['currentPage']
         contentWriter.output(index_html, pageInfo['currentPage'][1])
 
     elapsedTime = time.time() - startTime
