@@ -16,7 +16,16 @@ import sqlite3
 
 
 class GenerationComponent(object):
+    """ Base class for components part of the content processing pipeline """
+
     def __init__(self, settings):
+        """ 
+
+        Attributes: 
+            settings: path to a settings file, or instance of Settings class.
+
+        """
+
         if type(settings) == str:
             settings = GenerationComponent.load_project_file(settings)
 
@@ -24,6 +33,18 @@ class GenerationComponent(object):
 
     @staticmethod
     def load_project_file(path=None):
+        """ Load settings object from filepath using the Settings module.
+
+            If path is not given, use the current working directory.
+
+            Attributes:
+                path (str): absolute path to the settings file.
+
+            Returns:
+                An instance of the Settings class.
+
+
+        """
         if not path:
             path = '.'
 
@@ -50,10 +71,20 @@ class GenerationComponent(object):
 
 
 class ContentLoader(GenerationComponent):
+    """ Responsible for finding potential content files """
+
     def __init__(self, settings):
         super(ContentLoader, self).__init__(settings)
 
     def get_content_paths(self):
+        """ Get paths to all potential source files to be processed using the 
+            settings attribute. 
+
+            Returns:
+                list of absolute filepaths.
+
+        """ 
+
         settings_source = self.settings['source_dir']
         sources = []
         files = []
@@ -91,6 +122,15 @@ class ContentLoader(GenerationComponent):
 
     @staticmethod
     def file_filter_func(filename):
+        """ Filters the content files based . 
+
+        Use this function to filter by things such as file extension.
+
+        Returns:
+            bool: True if file is valid, False otherwise.
+
+        """
+
         valid_extensions = ['.md']
         
         result = False
@@ -103,10 +143,30 @@ class ContentLoader(GenerationComponent):
 
 
 class ContentReader(GenerationComponent):
+    """ Parse the contents of a source file.
+
+    Assume that the content file is markdown and process using the python
+    markdown module.
+
+    Note:
+        Default markdown extensions for meta and syntax highlitng are also used.
+
+    """
+
     def __init__(self, settings):
         super(ContentReader, self).__init__(settings)
 
     def generate_html(self, fpath):
+        """ Transform contents of a source file into html.
+
+        Attributes:
+            fpath: Absolute filepath to the file to transform.
+
+        Returns:
+            str: html string
+
+        """
+
         html = ''
         sourceContents = ''
 
@@ -128,6 +188,21 @@ class ContentReader(GenerationComponent):
         return html
 
     def generate_meta(self, fpath):
+        """ Gather any meta data related to the filepath given.
+
+        Use the markdown extension to gather meta information. 
+
+        Attributes:
+            fpath: absolute filepath to the filename.
+
+        Returns:
+            dict: dict of meta values.
+
+
+        TODO:
+            - Use a separate file as a source for meta information based on filename
+
+        """
 
         meta = {}
 
@@ -144,6 +219,25 @@ class ContentReader(GenerationComponent):
 # Returns path to template config file so far, useless
 # TODO change to using local template folder
 def load_template_file(settings=None):
+    """ Load absolute path to luwak template config file.
+
+    Get the correct template config file using the settings file and returning the
+    correct defualt template. If not settings object is given, use the first template
+    found in the default templates directory (uses os.listdir which has an arbitrary 
+    order).
+
+    Note:
+        Default templates can be created using the templates folder in the 
+        luwak source directory. 
+
+    Attributes:
+        settings: Instance of a settings object.
+
+    Returns:
+        str: absolute file path.
+
+    """ 
+
     templateFilename = 'luwak_template.rc'
     defaultTemplatesPath = os.path.join(os.path.dirname(__file__), 'templates')
     defaultTemplates = os.listdir(defaultTemplatesPath)
@@ -159,13 +253,22 @@ def load_template_file(settings=None):
         return ValueError("not implemented yet...")
 
 class TemplateCombinator(GenerationComponent):
+    """ Insert values into a template """
+
     def __init__(self, settings):
         super(TemplateCombinator, self).__init__(settings)
 
-    """
-    Returns template string
-    """
     def get_template(self, templateType='default'):
+        """ Get template html 
+
+        Attributes:
+            templateType: 
+
+        Returns:
+            str: html code
+
+        """
+
         templateConfigFilePath = load_template_file()
         templateDirPath = os.path.dirname(templateConfigFilePath)
 
@@ -179,12 +282,18 @@ class TemplateCombinator(GenerationComponent):
 
         return templateHtml
 
-
     def combine(self, html, fname=None, meta=dict()):
-        """ 
-        Takes html and produces a final html file combined with a template.
-        Can use the fname to find meta information to be used in the template 
-        generation process.
+        """Injects values into a html template.
+
+        Use for standard type article i.e. with a title, content, tags, etc.
+
+        Attributes:
+            html: Html code to be inserted into the template.
+            fname: Filename of the source file. Defaults to None.
+            meta: Meta values of the source file. Defaults to an empty dict.
+
+        Returns:
+            str: html code with given values inserted.
 
         """
 
@@ -197,8 +306,17 @@ class TemplateCombinator(GenerationComponent):
         templateSoup = BeautifulSoup(templateSoup.encode_contents())
 
         def cleanup():
+            """ Return a cleaned version of a beautifulsoup object.
+
+                BeautifulSoup has a bug that prevents finding tags correctly
+                after inserting a soup object. Use this function to decod the 
+                template soup into text and then parse that string into a 
+                BeautifulSoup object again.
+
+            """
             return BeautifulSoup(templateSoup.encode_contents())
 
+        # Formatters for the data to be injected
         def date_formatter(metaDate):
             date = datetime.datetime.strptime(metaDate[0], '%Y-%m-%d')
             return date.strftime('%B %d, %Y')
@@ -248,12 +366,24 @@ class TemplateCombinator(GenerationComponent):
             if tag:
                 tag['class'].append('hidden')
 
-        #print templateSoup
         endProduct = templateSoup.prettify()
 
         return endProduct
 
     def combine_list(self, links, listTitle=None):
+        """ Similar to 'combine' method but for list views.
+
+        Use for tag pages.
+
+        Attributes:
+            links: list of tuples in the form of (title, link) where link is 
+                the href link value for the anchor tags generated.
+
+        Returns:
+            str: Html code.
+
+        """
+
         templateHtml = self.get_template('list')
         def a_formatter(title, href):
             if not href:
@@ -274,6 +404,16 @@ class TemplateCombinator(GenerationComponent):
         return templateSoup.prettify()
 
     def combine_index(self, pageInfo):
+        """ Similar to `combine` method but for index pages.
+
+        Attributes: 
+            pageInfo (dict): Value generated by ``Paginator`` from 
+                luwak.pagination
+
+        Returns:
+            str: Html code.
+
+        """
         def a_formatter(title, href):
             return "<a href='{1}'>{0}</a>".format(title, href)
 
@@ -332,16 +472,29 @@ class TemplateCombinator(GenerationComponent):
         return templateSoup.prettify()
 
 class ContentWriter(GenerationComponent):
+    """ Use to write contents to a file. """
+
     def __init__(self, settings):
         super(ContentWriter, self).__init__(settings)
 
     def generate_name(self, fname):
-        """ Takes a filename (not path) and returns a canonical filename """
+        """ Take a filename (not path) and return a canonical filename """
 
         newName = ''.join(fname.split('.')[:-1]+['.html'])
         return newName
 
     def generate_dir(self, dirType):
+        """ Generate the directory to be used based on dirType.
+
+            Use to control the structure of luwak project directories by
+            establishing a specific structure.
+
+            Attributes:
+                dirType (str): Directory type; valid types are: 'tags'.
+
+            Returns:
+                str: Absolute path to directory in the luwak project.
+        """
         validDirTypes = ['tags']
         settingsValues = ['tags_dir']
 
@@ -355,6 +508,25 @@ class ContentWriter(GenerationComponent):
         return outputDir
 
     def output(self, html, fname=None, dirPath=None):
+        """ Writes html code to a file.
+
+        Use to output final versions of processed content to the output 
+        directory.
+
+        Attributes:
+            html: Content to be written (assumed to be html code).
+            fname: Related filename (e.g. filename of the original source file).
+                Defaults to None.
+            dirPath: Absolute directory path to place the file in. Defaults to None.
+
+        Returns:
+            str: Filename relative to the output directory.
+
+        Note:
+            Instead of using the dirPath attribute, use output_specific to 
+            output to specific directories in the output directory.
+
+        """
         if dirPath is None:
             output_dir = self.settings['output_dir']
         else:
@@ -376,20 +548,37 @@ class ContentWriter(GenerationComponent):
         return newName
 
     def output_specific(self, html, fname, dirType):
-        """ Stores files in the right directory 
+        """ Wrapper for output method with a specific directory type.
 
-            Notes:
-                Bulk of code logic moved to self.generate_dir
+        Use to output to specific directory categories in the output directory
+        such as the 'tags' directory. Refer to the generate_dir method used
+        to see what valid directories exist and where they are in the output
+        directory.
+
+        Notes:
+            Bulk of code logic moved to self.generate_dir
+
         """
-
         return self.output(html, fname, dirPath=self.generate_dir(dirType))
 
 
 class IterativeBuilder(GenerationComponent):
+    """ Use to implement iterative builds. """
+
     def __init__(self, settings):
         super(IterativeBuilder, self).__init__(settings)
 
     def content_filter(self, contentList):
+        """ Filter files that haven't been updated.
+
+            Attributes:
+                contentList: List of absolute filepaths to be filtered.
+
+            Returns:
+                List of filepaths that have been updated that are a subset of 
+                    contentList.
+
+        """ 
         dbManager = DatabaseManager(self.settings)
         dbPath = dbManager.dbFilePath
 
@@ -432,8 +621,15 @@ class CategoryGenerator(GenerationComponent):
         super(CategoryGenerator, self).__init__(settings)
 
     def get_tags(self, fname=None):
-        """ Get a list of all the tags in the database as a row object"""
+        """ Get a list of all the tags in the database as a row object. 
 
+            Attributes:
+                fname: Standardized form of the filename stored in the database.
+
+            Returns: 
+                [str]: list of tags.
+
+        """
         dbManager = DatabaseManager(self.settings)
         conn, cursor = dbManager.get_conn()
 
@@ -443,6 +639,7 @@ class CategoryGenerator(GenerationComponent):
         return cursor.fetchall()
 
     def get_fnames_from_tag(self, tagName):
+        """ Get filenames with a tag matching tagName. """
         dbManager = DatabaseManager(self.settings)
         conn, cursor = dbManager.get_conn()
 
@@ -459,11 +656,19 @@ class CategoryGenerator(GenerationComponent):
 
 
 class DatabaseManager(GenerationComponent):
+    """ Abstraction for db operations. """
+
     def __init__(self, settings):
         super(DatabaseManager, self).__init__(settings)
         self.dbFilePath = os.path.join(self.settings['project_path'], 'db', self.settings['db_name'])
 
     def get_conn(self):
+        """ Get sql connection and cursor. 
+
+            Returns:
+                tuple: (cursor, connection) from sqlite3 module.
+        """
+
         conn = sqlite3.connect(self.dbFilePath, detect_types=sqlite3.PARSE_DECLTYPES)
         conn.row_factory = sqlite3.Row
 
@@ -473,8 +678,19 @@ class DatabaseManager(GenerationComponent):
 
 
     def get_list(self, table, col, distinct=False):
-        """ returns a list of row objects  """
+        """ Return a list of row objects.
 
+        Attributes:
+            table: Table name.
+            col: Column name; defaults to '*'.
+            distinct: If select operation should be distinct. Defaults to False.
+
+        Returns:
+            [Row]: A list of row objects where the row factory is sqlite3.Row.
+                Meaning that column values can be accessed using the column
+                name as the key. For example: rowObject['column_name'].
+
+        """
         conn, cursor = self.get_conn()
 
         if col is None:
@@ -491,7 +707,13 @@ class DatabaseManager(GenerationComponent):
         return cursor.fetchall()
 
     def fname_formatter(self, absFPath):
-        """ Formats an absolute filepath to the format used as a key in the db 
+        """ Formats an absolute filepath to the format used as a key in the db. 
+
+        Attributes: 
+            absFPath: Absolute path to the file to format.
+
+        Returns:
+            str: filepath relative to the output directory.
 
         """
 
@@ -501,6 +723,15 @@ class DatabaseManager(GenerationComponent):
         return relativeFname
 
     def update_tags(self, fnameKey, tags):
+        """ Update the tags for a given filename. 
+
+        Attributes:
+            fnameKey: Filename that's used as a key. Use fname_formatter to make
+                sure that the filename is the standard form used in the db.
+            tags: List of new tags for the article.
+
+        """
+
         conn, cursor = self.get_conn()
 
         cursor.execute('select tag from tags where filename=?', (fnameKey,))
@@ -523,6 +754,16 @@ class DatabaseManager(GenerationComponent):
 
 
 class DefaultGenerator(GenerationComponent):
+    """ Wrapper for the content processing pipeline.
+
+    Use all the derived GenerationComponent classes to provide an interface
+    to process source content. 
+
+    Note: 
+        Currently not implemented.
+
+    """
+
     def __init__(self, settings):
         super(DefaultGenerator, self).__init__(settings)
 
