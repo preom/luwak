@@ -237,6 +237,11 @@ class JinjaCombinator(CombinatorBase):
     def __init__(self, *args):
         super(JinjaCombinator, self).__init__(*args)
         self.env = Environment(loader=FileSystemLoader(self.templateDirPath))
+
+        def defaultDateFilter(datetimeObj):
+            return datetimeObj.strftime("%B %-d, %Y")
+
+        self.env.filters['defaultDate'] = defaultDateFilter
      
     def combine(self, context, templateType=None):
         template = self.load_template(templateType)
@@ -327,6 +332,11 @@ class TemplateCombinator(GenerationComponent):
         context['fname'] = html
 
         return self.combine(context)
+
+    def combine_index_wrapper(self, pageInfo):
+        context = pageInfo
+
+        return self.combine(context, templateType='index')
 
     def combine_template(self, template, ctx):
         pass

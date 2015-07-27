@@ -3,12 +3,15 @@
 from luwak.settings import Settings
 from luwak.generate import *
 from luwak.pagination import *
+from luwak.templating import TemplateCombinator
 
 import argparse
 import sys
 import os
 import shutil
 import sqlite3
+import logging
+
 
 import time
 
@@ -65,7 +68,7 @@ def process_start(*args, **kwargs):
     os.chdir(oldDir)
 
     # copy start template
-    startTemplateDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates', 'start')
+    startTemplateDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templating', 'templates', 'start')
     for src in [os.path.join(startTemplateDir, i) for i in os.listdir(startTemplateDir)]:
         if os.path.isfile(src):
             shutil.copy(src, output_dir)
@@ -248,32 +251,32 @@ def process_generate(*args, **kwargs):
         if row['nextFilename']:
             metaContent['next'] = [contentWriter.generate_name(row['nextFilename'])]
 
-        html = templater.combine(htmlContent, fname=fname, meta=metaContent)
+        html = templater.combine_html_wrapper(htmlContent, fname=fname, meta=metaContent)
         href = contentWriter.output(html, fname)
         postList.append((metaContent['title'][0], href))
 
-    # Generate tag pages
-    tagGenerator = CategoryGenerator(proj_settings)
-    tags = [t['tag'] for t in tagGenerator.get_tags()]
-    tags = [(t, '/tags/{}.html'.format(t)) for t in tags]
-    html = templater.combine_list(tags, listTitle="Tags")
-    contentWriter.output_specific(html, 'index.html', 'tags')
-    for tag, tagLink in tags:
-        articles = []
-        for row in tagGenerator.get_fnames_from_tag(tag):
-            fname = os.path.basename(row['filename'])
-            fname = '/' + contentWriter.generate_name(fname)
-            articles.append((row['title'], fname))
+    # # Generate tag pages
+    # tagGenerator = CategoryGenerator(proj_settings)
+    # tags = [t['tag'] for t in tagGenerator.get_tags()]
+    # tags = [(t, '/tags/{}.html'.format(t)) for t in tags]
+    # html = templater.combine_list(tags, listTitle="Tags")
+    # contentWriter.output_specific(html, 'index.html', 'tags')
+    # for tag, tagLink in tags:
+    #     articles = []
+    #     for row in tagGenerator.get_fnames_from_tag(tag):
+    #         fname = os.path.basename(row['filename'])
+    #         fname = '/' + contentWriter.generate_name(fname)
+    #         articles.append((row['title'], fname))
 
-        html = templater.combine_list(articles, listTitle=tag)
-        contentWriter.output_specific(html, '{}.html'.format(tag), 'tags')
+    #     html = templater.combine_list(articles, listTitle=tag)
+    #     contentWriter.output_specific(html, '{}.html'.format(tag), 'tags')
 
 
     # Generate Index pages
     pgDSource = PaginationDbDataSource(dbManager.dbFilePath)
     paginator = Paginator(pgDSource)
     for pageInfo in paginator.get_generator():
-        index_html = templater.combine_index(pageInfo)
+        index_html = templater.combine_index_wrapper(pageInfo)
         contentWriter.output(index_html, pageInfo['currentPage'][1])
 
     elapsedTime = time.time() - startTime
