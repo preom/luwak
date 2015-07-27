@@ -7,8 +7,6 @@ from settings import Settings
 
 import sys
 
-from bs4 import BeautifulSoup
-
 import pdb
 import datetime
 
@@ -22,7 +20,7 @@ class GenerationComponent(object):
         """ 
 
         Attributes: 
-            settings: path to a settings file, or instance of Settings class.
+            settings: path to a directory containing settings file, or instance of Settings dict data.
 
         """
 
@@ -84,7 +82,6 @@ class ContentLoader(GenerationComponent):
                 list of absolute filepaths.
 
         """ 
-
         settings_source = self.settings['source_dir']
         sources = []
         files = []
@@ -216,260 +213,7 @@ class ContentReader(GenerationComponent):
 
         return meta
 
-# Returns path to template config file so far, useless
-# TODO change to using local template folder
-def load_template_file(settings=None):
-    """ Load absolute path to luwak template config file.
 
-    Get the correct template config file using the settings file and returning the
-    correct defualt template. If not settings object is given, use the first template
-    found in the default templates directory (uses os.listdir which has an arbitrary 
-    order).
-
-    Note:
-        Default templates can be created using the templates folder in the 
-        luwak source directory. 
-
-    Attributes:
-        settings: Instance of a settings object.
-
-    Returns:
-        str: absolute file path.
-
-    """ 
-
-    templateFilename = 'luwak_template.rc'
-    defaultTemplatesPath = os.path.join(os.path.dirname(__file__), 'templates')
-    defaultTemplates = os.listdir(defaultTemplatesPath)
-
-    if settings and hasattr(self.settings, 'template'):
-        template = self.settings.template 
-    else:
-        template = defaultTemplates[0]
-
-    if template in defaultTemplates:
-        return os.path.join(defaultTemplatesPath, template, templateFilename)
-    else:
-        return ValueError("not implemented yet...")
-
-class TemplateCombinator(GenerationComponent):
-    """ Insert values into a template """
-
-    def __init__(self, settings):
-        super(TemplateCombinator, self).__init__(settings)
-
-    def get_template(self, templateType='default'):
-        """ Get template html 
-
-        Attributes:
-            templateType: 
-
-        Returns:
-            str: html code
-
-        """
-
-        templateConfigFilePath = load_template_file()
-        templateDirPath = os.path.dirname(templateConfigFilePath)
-
-        with open(templateConfigFilePath, 'r') as f:
-            templateConfig = json.loads(f.read())
-
-        # TODO match fname against rules
-
-        with open(os.path.join(templateDirPath, templateConfig[templateType]), 'r') as f:
-            templateHtml = f.read()
-
-        return templateHtml
-
-    def combine(self, html, fname=None, meta=dict()):
-        """Injects values into a html template.
-
-        Use for standard type article i.e. with a title, content, tags, etc.
-
-        Attributes:
-            html: Html code to be inserted into the template.
-            fname: Filename of the source file. Defaults to None.
-            meta: Meta values of the source file. Defaults to an empty dict.
-
-        Returns:
-            str: html code with given values inserted.
-
-        """
-
-        templateHtml = self.get_template()
-        templateSoup = BeautifulSoup(templateHtml)
-        htmlSoup = BeautifulSoup(html)
-
-        tag = templateSoup.find(class_='luwak-content')
-        tag.insert(1, htmlSoup)
-        templateSoup = BeautifulSoup(templateSoup.encode_contents())
-
-        def cleanup():
-            """ Return a cleaned version of a beautifulsoup object.
-
-                BeautifulSoup has a bug that prevents finding tags correctly
-                after inserting a soup object. Use this function to decod the 
-                template soup into text and then parse that string into a 
-                BeautifulSoup object again.
-
-            """
-            return BeautifulSoup(templateSoup.encode_contents())
-
-        # Formatters for the data to be injected
-        def date_formatter(metaDate):
-            date = datetime.datetime.strptime(metaDate[0], '%Y-%m-%d')
-            return date.strftime('%B %d, %Y')
-
-        def tag_formatter(metaTags):
-            tagString = "<span class='tag label label-default'> <span class='glyphicon glyphicon-tag'></span> {}</span>"
-            tagHtml = ''.join([tagString.format(tag) for tag in meta['tags']])
-
-        def prev_formatter(metaPrev):
-            tagString = '<a href=\'{}\'><span aria-hidden="true" class="glyphicon glyphicon-menu-left"></span> Prev </a>'
-            return tagString.format(metaPrev[0])
-
-        def next_formatter(metaNext):
-            tagString = '<a href=\'{}\'>Next <span aria-hidden="true" class="glyphicon glyphicon-menu-right"></span></a>'
-            return tagString.format(metaNext[0])
-
-
-        metaTags = ['date', 'tags', 'title', 'prev', 'next']
-        formatters = [date_formatter, tag_formatter, None, prev_formatter, next_formatter]
-        template_class = ['luwak-date', 'luwak-tags', 'luwak-title', 'luwak-prev', 'luwak-next']
-
-        assert(len(metaTags) == len(formatters) == len(template_class))
-
-        for mTag, frmt, cls in zip(metaTags, formatters, template_class):
-            if mTag in meta:
-                tag = templateSoup.find(class_=cls)
-                if frmt:
-                    tagContent = frmt(meta[mTag])
-                else:
-                    tagContent = meta[mTag][0]
-
-                if tagContent:
-                    soup = BeautifulSoup(tagContent, 'html.parser')
-                else:
-                    continue
-
-                try:
-                    tag.append(soup)
-                except:
-                    print "Error with parsing " + mTag
-
-                templateSoup = cleanup()
-
-        #TODO Fix this arbitrary piece of code
-        if len(templateSoup) < 3000:
-            tag = templateSoup.find(class_='to-top')
-            if tag:
-                tag['class'].append('hidden')
-
-        endProduct = templateSoup.prettify()
-
-        return endProduct
-
-    def combine_list(self, links, listTitle=None):
-        """ Similar to 'combine' method but for list views.
-
-        Use for tag pages.
-
-        Attributes:
-            links: list of tuples in the form of (title, link) where link is 
-                the href link value for the anchor tags generated.
-
-        Returns:
-            str: Html code.
-
-        """
-
-        templateHtml = self.get_template('list')
-        def a_formatter(title, href):
-            if not href:
-                href = ''
-            return "<a href='{1}'>{0}</a>".format(title, href)
-
-        linksHtml = ''.join([a_formatter(title, href) for title, href in links])
-        linksSoup = BeautifulSoup(linksHtml)
-        templateSoup = BeautifulSoup(templateHtml)
-
-        tag = templateSoup.find(class_='luwak-list')
-        tag.append(linksSoup)
-
-        if listTitle:
-            tag = templateSoup.find(class_='luwak-list-title')
-            tag.string.replace_with(listTitle)
-
-        return templateSoup.prettify()
-
-    def combine_index(self, pageInfo):
-        """ Similar to `combine` method but for index pages.
-
-        Attributes: 
-            pageInfo (dict): Value generated by ``Paginator`` from 
-                luwak.pagination
-
-        Returns:
-            str: Html code.
-
-        """
-        def a_formatter(title, href):
-            return "<a href='{1}'>{0}</a>".format(title, href)
-
-        templateHtml = self.get_template('index')
-        postListHtml = []
-        for title, href, article in pageInfo['postList']:
-
-            aHtml = '<a href=\'{1}\'>{0}</a>'.format(title.title(), href)
-            dateHtml = '<span>{}</span>'.format(article['created'].strftime("%b %d, %y"))
-            postStr = """
-                <div class=\'index-post\'>
-                    <div class=\'post-title\'>{aHtml}</div>
-                    <div class=\'post-date\'>{dateHtml}</div>
-                </div>
-            """
-            postListHtml.append(postStr.format(aHtml=aHtml,dateHtml=dateHtml))
-
-        listSoup = BeautifulSoup('<hr>'.join(postListHtml))    
-        templateSoup = BeautifulSoup(templateHtml)
-
-        tag = templateSoup.find(class_='luwak-index')
-        paginationTag = templateSoup.find(class_='luwak-pagination')
-
-        if not tag:
-            raise ValueError('No luwak-index in index template')
-        else:
-            tag.append(listSoup)
-
-
-        leftAdjacent = [a_formatter(title, href) for title, href in pageInfo['leftAdjacentPages']]
-        rightAdjacent = [a_formatter(title, href) for title, href in pageInfo['rightAdjacentPages']]
-
-        currentpage = a_formatter(pageInfo['currentPage'][0], pageInfo['currentPage'][1])
-
-        page_list = leftAdjacent + [currentpage] + rightAdjacent
-        for ind, val in enumerate(page_list):
-            if val == currentpage:
-                cls = 'active'
-            else:
-                cls = ''
-
-            page_list[ind] = "<li class='{}'>{}</li>".format(cls, val)
-
-
-        page_list = ['<ul class="pagination pull-right">'] + page_list + ['</ul>']
-
-        paginationSoup = BeautifulSoup(''.join(page_list))
-
-        tag = templateSoup.find(class_='luwak-pagination')
-
-        if paginationTag:
-            paginationTag.append(paginationSoup)
-        else:
-            print "WARNING: no page index"
-
-        return templateSoup.prettify()
 
 class ContentWriter(GenerationComponent):
     """ Use to write contents to a file. """
