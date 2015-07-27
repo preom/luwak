@@ -224,7 +224,8 @@ class ContentWriter(GenerationComponent):
     def generate_name(self, fname):
         """ Take a filename (not path) and return a canonical filename """
 
-        newName = ''.join(fname.split('.')[:-1]+['.html'])
+        root, ext = os.path.splitext(fname)
+        newName = root + '.html'
         return newName
 
     def generate_dir(self, dirType):
