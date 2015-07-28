@@ -2,8 +2,7 @@ import sqlite3
 from generate import DatabaseManager
 
 class PaginationDataSource(object):
-    """ Adapter between data and Pagination class
-
+    """ Adapter between data and Pagination class.
 
     """
 
@@ -13,16 +12,16 @@ class PaginationDataSource(object):
     def get_generator(self):
         """ Returns a iterable generator 
 
-            Note: Low memory usage, but slower
+        Note: Low memory usage, but slower
 
         """
-
         pass
 
 class PaginationDbDataSource(PaginationDataSource):
-    """ Uses a db source e.g. sqlite3 as a data source 
+    """ Uses a db source e.g. sqlite3 as a data source.
 
-        page index begins at 1
+        Note:
+            page index begins at 1
     """
 
     def __init__(self, dbfilepath=None):
@@ -40,16 +39,17 @@ class PaginationDbDataSource(PaginationDataSource):
         self.pageCount = self.totalCount/self.pageSize
 
     def get_generator(self):
-        """
+        """ Return a generator that produces index pages.
 
-        Note: function shouldn't make any writes to db
+        Note: 
+            function shouldn't make any writes to db
 
         """
         cursor = self.cursor
 
-        for pageIndex in range(self.pageCount):
+        for pageIndex in range(0, self.pageCount + 1):
             limit = self.pageSize 
-            offset = pageIndex * limit
+            offset = (pageIndex) * limit
             cursor.execute('select * from {} limit ? offset ?'.format(self.table), (limit, offset))
             page = cursor.fetchall()
 
@@ -57,9 +57,10 @@ class PaginationDbDataSource(PaginationDataSource):
 
 
 class Paginator(object):
-    """ Takes a data source and outputs a nested data structure 
+    """ Takes a data source and outputs a nested data structure.
 
-    Add start page number
+    TODO: 
+        Add start page number
     """
 
     def __init__(self, paginationDataSource):
@@ -76,11 +77,9 @@ class Paginator(object):
 
 
     def get_generator(self):
-        """
-            generates dict 
-            dict has postlist that is a tuple
-        """
+        """ Returns a generator that procues page index info.
 
+        """
         for pageIndex, page in self.paginationDataSource.get_generator():
 
             pageInfo = dict()
@@ -126,7 +125,6 @@ class Paginator(object):
                 # pageInfo[l] can evaluate to False if index is 0
                 if pageInfo[l] is not None:
                     pageInfo[l] = (pageInfo[l], self.indexHrefFormatter(pageInfo[l]))
-                    print pageInfo[l]
 
             yield pageInfo
 
