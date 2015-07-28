@@ -5,6 +5,10 @@ import json
 import unittest
 import os
 
+import logging
+
+logger = logging.getLogger('settingsLogger')
+
 class Settings(object):
 
     CONFIG_FILENAME = 'luwak.rc'
@@ -20,8 +24,58 @@ class Settings(object):
     def __init__(self):
         self.settings_data = self.default_data
 
-    def genrate_settings_file(self):
-        pass
+    def validate(self, dirPath, fixErrors=True):
+        """ Validate a settings file.
+
+            Attributes:
+                dirPath (str): Absolute path to the root of the project directory.
+                fixErrors (bool): Try and fix any erros found. Defaults to True.
+
+            Returns:
+                bool: True if everything is ok, False otherwise. 
+
+        """
+        file_path = self.generate_settings_file(dirPath)
+        settings = self.get_settings_file(dirPath)
+
+        msgPreamble = "Settings Validation: \n"
+        msg = "{preamble}{reason}\n"
+
+        if settings['project_path'] != dirPath:
+            msgReason = 'Wrong project path - fixing to correct path.'
+            logger.info(msg.format(preamble=msgPreamble, reason=msgReason))
+
+            settings['project_path'] = dirPath
+
+        self.update_settings_file(dirPath, settings)
+
+
+    def get_settings_file(self, dirPath):
+        """ Return a json settings file. 
+
+        """
+        file_path = self.generate_settings_file(dirPath)
+
+        with open(file_path, 'r') as f:
+            return json.loads(f.read())
+
+    def update_settings_file(self, dirPath, contents):
+        """ Update a json settings file.
+
+        """
+        file_path = self.generate_settings_file(dirPath)
+
+        with open(file_path, 'w') as f:
+            f.write(json.dumps(contents, 
+                               sort_keys=True,
+                               indent=4,
+                               separators=(',', ': ')))
+
+    def generate_settings_file(self, dirPath):
+        """ Return the settings filepath. 
+
+        """
+        return os.path.join(dirPath, Settings.CONFIG_FILENAME)
 
     @staticmethod
     def generate_default_settings_file(dir_path=None):
@@ -41,12 +95,3 @@ class Settings(object):
 
 class SettingsReader(object):
     pass
-
-class SettingsTest(unittest.TestCase):
-    
-    def test_default_file_generation(self):
-        Settings.generate_default_settings_file('output')
-
-if __name__ == '__main__':
-    unittest.main()
-
