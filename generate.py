@@ -3,7 +3,7 @@ import os
 
 import markdown
 
-from settings import Settings
+from luwak import settings as Settings
 
 import sys
 
@@ -23,49 +23,10 @@ class GenerationComponent(object):
             settings: path to a directory containing settings file, or instance of Settings dict data.
 
         """
-
         if type(settings) == str:
-            settings = GenerationComponent.load_project_file(settings)
+            settings = Settings.load_project_file(settings)
 
         self.settings = settings
-
-    @staticmethod
-    def load_project_file(path=None):
-        """ Load settings object from filepath using the Settings module.
-
-            If path is not given, use the current working directory.
-
-            Attributes:
-                path (str): absolute path to the settings file.
-
-            Returns:
-                An instance of the Settings class.
-
-
-        """
-        if not path:
-            path = '.'
-
-        cwd = os.getcwd()
-
-        if not os.path.isdir(path):
-            raise ValueError('Not a directory', path)
-
-        os.chdir(path)
-
-        try:
-            with open(Settings.CONFIG_FILENAME, 'r') as f:
-                    settings = json.loads(f.read())
-
-        except IOError:
-            print " >>> ----------------------------- <<< "
-            print " >>> Error loading the config file <<< "
-            print " >>> ----------------------------- <<< "
-            sys.exit(0) 
-
-        os.chdir(cwd)
-
-        return settings
 
 
 class ContentLoader(GenerationComponent):
@@ -224,6 +185,9 @@ class ContentWriter(GenerationComponent):
     def generate_name(self, fname):
         """ Take a filename (not path) and return a canonical filename """
 
+        if not fname:
+            raise ValueError("Expected a valid filename")
+
         root, ext = os.path.splitext(fname)
         newName = root + '.html'
         return newName
@@ -239,6 +203,11 @@ class ContentWriter(GenerationComponent):
 
             Returns:
                 str: Absolute path to directory in the luwak project.
+
+            Todo:
+                rename method since it implies that it actually generates a
+                directory and not a directory name.
+
         """
         validDirTypes = ['tags']
         settingsValues = ['tags_dir']
@@ -287,7 +256,6 @@ class ContentWriter(GenerationComponent):
         os.chdir(output_dir)
         with open(newName, 'w') as f:
             f.write(html)
-
         os.chdir(oldDir)
 
         return newName
