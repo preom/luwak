@@ -284,12 +284,16 @@ class IterativeBuilder(GenerationComponent):
     def content_filter(self, contentList):
         """ Filter files that haven't been updated.
 
-            Attributes:
-                contentList: List of absolute filepaths to be filtered.
+        Check files against the database, return those that have been recently 
+        modified and update db. If the file isn't found in database, add it.
 
-            Returns:
-                List of filepaths that have been updated that are a subset of 
-                    contentList.
+        Attributes:
+            contentList: List of absolute filepaths to be filtered.
+
+        Returns:
+            List of filepaths that have been updated that are a subset of 
+
+                contentList.
 
         """ 
         dbManager = DatabaseManager(self.settings)
@@ -328,6 +332,14 @@ class IterativeBuilder(GenerationComponent):
             print ">>>----------------<<<"
 
         return resultList
+
+    def update(self, contentList):
+        """ Updates files.
+
+        Attributes:
+            contentList: list of filenames to update in database. 
+
+        """
 
 class CategoryGenerator(GenerationComponent):
     def __init__(self, settings):
@@ -426,7 +438,7 @@ class DatabaseManager(GenerationComponent):
             absFPath: Absolute path to the file to format.
 
         Returns:
-            str: filepath relative to the output directory.
+            str: filepath relative to the source directory.
 
         """
 
