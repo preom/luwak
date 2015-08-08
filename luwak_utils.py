@@ -3,6 +3,7 @@
 from luwak.settings import Settings
 from luwak.generate import *
 from luwak.pagination import *
+from luwak.taggint import *
 from luwak.templating import TemplateCombinator
 
 import argparse
