@@ -340,6 +340,7 @@ class IterativeBuilder(GenerationComponent):
             contentList: list of filenames to update in database. 
 
         """
+        pass
 
 class CategoryGenerator(GenerationComponent):
     def __init__(self, settings):
@@ -438,7 +439,7 @@ class DatabaseManager(GenerationComponent):
             absFPath: Absolute path to the file to format.
 
         Returns:
-            str: filepath relative to the source directory.
+            str: filepath relative to the output directory.
 
         """
 
