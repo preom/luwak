@@ -1,4 +1,6 @@
-from generate import DatabaseManager, GenerationComponent
+from generate import GenerationComponent
+from luwak.db import DatabaseManager
+
 
 class CategoryGenerator(GenerationComponent):
     def __init__(self, settings):

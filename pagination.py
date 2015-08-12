@@ -1,5 +1,5 @@
 import sqlite3
-from generate import DatabaseManager
+from luwak.db import DatabaseManager
 
 class PaginationDataSource(object):
     """ Adapter between data and Pagination class.

@@ -5,6 +5,7 @@ from luwak.generate import *
 from luwak.pagination import *
 from luwak.taggint import *
 from luwak.templating import TemplateCombinator
+from luwak.db import DatabaseManager
 
 import argparse
 import sys

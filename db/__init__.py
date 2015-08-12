@@ -1,3 +1,6 @@
+from luwak import GenerationComponent
+from luwak.generate import *
+
 class DatabaseManager(GenerationComponent):
     """ Abstraction for db operations. """
 
