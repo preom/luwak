@@ -4,7 +4,6 @@ import datetime
 import logging
 
 from luwak.generate import GenerationComponent
-from luwak.settings import Settings
 
 from bs4 import BeautifulSoup
 
